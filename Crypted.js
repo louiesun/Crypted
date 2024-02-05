@@ -47,6 +47,91 @@ function StrProcess(str,swh=1)
     return ansstr;
 }
 
+//https://blog.csdn.net/cxgasd/article/details/81139769 js版梅森缠绕器
+// meisonRandom.srand(seed) meisonRandom.rand()
+let meisenRandom = (function meisen()
+{
+	let isInit = 0;
+	let index;
+	let MT = new Array(624); //624 * 32 - 31 = 19937
+	function srand(seed)
+	{
+		index = 0;
+		isInit = 1;
+		MT[0] = seed;
+		for(let i = 1; i < 624; i++)
+		{
+			let t = 1812433253 * (MT[i - 1] ^ (MT[i - 1] >> 30)) + i;
+			MT[i] = t & 0xffffffff; 
+		}
+	}
+	function generate()
+	{
+		for(let i = 0; i < 624; i++)
+		{
+			// 2^31 = 0x80000000
+			// 2^31-1 = 0x7fffffff
+			let y = (MT[i] & 0x80000000) + (MT[(i + 1) % 624] & 0x7fffffff);
+			MT[i] = MT[(i + 397) % 624] ^ (y >> 1);
+			if(y & 1) MT[i] ^= 2567483615;
+			
+		}
+	}
+	function rand()
+	{
+		if(!isInit)	return null;
+		
+		if(index == 0) generate();
+		let y = MT[index];
+		y = y ^ (y >> 11); 
+		y = y ^ ((y << 7) & 2636928640); 
+		y = y ^ ((y << 15) & 4022730752);
+		y = y ^ (y >> 18); 
+		index = (index + 1) % 624;
+		return y;
+	}
+	return {
+		srand: srand,
+		rand: rand
+	};
+})();
+
+//https://developer.mozilla.org/zh-CN/docs/Web/API/Canvas_API/Tutorial/Pixel_manipulation_with_canvas
+function ImgProcess(w,h,swp,swh)//swp: swp(a,b) rvs ath px & bth px 0~(w-1) 0~(h-1)
+{
+	var rnd=meisenRandom;
+	rnd.srand(passnum);
+	var sz=w*h;
+	if(swh==1)
+	{
+		var TempArray=Array();
+		for(var i=0; i<sz; i++) TempArray.prototype.push({ a: rnd.rand()%sz, b: rnd.rand()%sz  });
+		TempArray.prototype.reverse();
+		for(var i=0; i<sz; i++) swp(TempArray[i].a,TempArray[i].b);
+		return swh;
+	}
+	else if(swh==-1)
+	{
+		for(var i=0; i<sz; i++) swp(rnd.rand()%sz,rnd.rand()%sz);
+		return swh;
+	}
+	else return null;
+}
+
+function MusicProcess(t,swh)//.wav wav 单声道单位时间振幅 t: number
+{
+	if(t>5000|t<-5000) return t;
+	else if(swh==1)
+	{
+		if(t+passnum>5000) return t+passnum-10000;
+		else return t+passnum;
+	}
+	else if(swh==-1)
+	{
+		if(t-passnum<5000) return t-passnum+10000;
+		else return t-passnum;
+	}
+}
 
 (function() {
     'use strict';
