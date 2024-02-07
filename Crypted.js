@@ -32,7 +32,7 @@ function CharUniIDmap(numin, swh)// very simple, right?
 }
 
 function StrProcess(str, swh = 1) {
-	console.log(CH3500);
+	// console.log(CH3500);
 	let ansstr = "";
 	for (let i = 0; i < str.length; i++) {
 		let UniID = Number(str.charCodeAt(i).toString(10));
@@ -98,16 +98,17 @@ function ImgProcess(w, h, swp, swh, svpc = 1)//swp: swp(a,b) rvs ath px & bth px
 	//关于性能平衡： 看了一下，一般图片至多10^6px，但是怎么说得1ms一张吧，这个是要给视频处理做铺垫得
 
 	if (TempArray.length == 0) Rnd.srand(passnum);
-	while (TempArray.length < tms) { TempArray.push({ a: Rnd.rand(), b: Rnd.rand() }); }
+	while (TempArray.length < tms * 2) { TempArray.push(Rnd.rand()); TempArray.push(Rnd.rand()); }
 	//passnum 不变
 
+	// console.log(TempArray);
 
 	if (swh == 1) {
-		for (let i = 0; i < tms; i++) swp(TempArray[i].a % sz, TempArray[i].b % sz);
+		for (let i = 0; i < tms; i++) swp(TempArray[i * 2] % sz, TempArray[i * 2 + 1] % sz);
 		return swh;
 	}
 	else if (swh == -1) {
-		for (let i = tms - 1; i >= 0; i--) swp(TempArray[i].a % sz, TempArray[i].b % sz);
+		for (let i = tms - 1; i >= 0; i--) swp(TempArray[i * 2 + 1] % sz, TempArray[i * 2] % sz);
 		return swh;
 	}
 	else return null;
@@ -171,6 +172,7 @@ function GetSelectionText()//selected so far
 	}
 
 	/** 进来canvas ImageData，操作
+	 * 不能由空元素，否则处理会乱
 	 * canvas.getContext("2d");*/
 	function ProcessCanvas(cvs, swh) {
 		//RGBA
@@ -180,12 +182,15 @@ function GetSelectionText()//selected so far
 
 		let tdata = imageData.data;
 
+		// alert(String(w)+" "+String(h)+" "+String(tdata.length));
+
 		function swp(a, b) {
-			// alert(String(a)+" "+String(b));
+			// console.log(String(a)+" "+String(b));
 			for (let i = 0; i < 4; i++) {
-				let t = tdata[b * 4 + (i + 1 + 4) % 4];
+				if ((a + b) % 4 == i) continue;
+				let t = tdata[b * 4 + i];
 				// console.log(t);
-				tdata[b * 4 + (i + 1 + 4) % 4] = tdata[a * 4 + i];
+				tdata[b * 4 + i] = tdata[a * 4 + i];
 				tdata[a * 4 + i] = t;
 			}
 		}
@@ -203,16 +208,20 @@ function GetSelectionText()//selected so far
 
 	// todo: replace in the origin place: 非常奇怪，只对拖动选择的有效，跨行无效。
 	let EndId = GM_registerMenuCommand("Encode", function () {
-		try {
-			var cvs = document.getElementById("canvas");
-			ProcessCanvas(cvs, 1);
-		}
-		catch
-		{
-			alert("ERR");
-		}
+		// try {
+		// 	let cvs = document.getElementById("canvas");
+		// 	// let start = new Date().getTime()
+		// 	ProcessCanvas(cvs, 1);
+		// 	// let end = new Date().getTime()
+		// 	// alert(end - start);
+		// }
+		// catch
+		// {
+		// 	alert("ERR");
+		// }
 
 		let Text = GetSelectionText();
+		
 		Text = StrProcess(Text, 1);
 
 		try {
@@ -224,14 +233,7 @@ function GetSelectionText()//selected so far
 		}
 	}, "e");
 	let DcdId = GM_registerMenuCommand("Decode", function () {
-		try {
-			var cvs = document.getElementById("canvas");
-			ProcessCanvas(cvs, -1);
-		}
-		catch
-		{
-			alert("ERR");
-		}
+
 		let Text = GetSelectionText();
 		Text = StrProcess(Text, -1);
 		try {
