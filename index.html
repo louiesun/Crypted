@@ -1,12 +1,146 @@
-<body>
-    <canvas id="canvas" width="291" height="224"></canvas>
-    <script>
-        var img = new Image();
-        img.crossOrigin = "anonymous";
-        img.src = "./test.png";
+<!DOCTYPE html>
+<html>
 
-        var canvas = document.getElementById("canvas");
-        var ctx=canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0);
+<head>
+    <title>Play Sine Wave</title>
+</head>
+
+<body>
+    <script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <button>Play the sound</button>
+    <canvas id='scope'></canvas>
+    <audio controls>
+        <source src="test.mp3">
+    </audio>
+    <style>
+        button {
+            position: fixed;
+            left: 10px;
+            top: 10px
+        }
+    </style>
+    <script>
+        let meisenRandom = (function meisen() {
+            let isInit = 0;
+            let index;
+            let MT = new Array(624); //624 * 32 - 31 = 19937
+            function srand(seed) {
+                index = 0;
+                isInit = 1;
+                MT[0] = seed;
+                for (let i = 1; i < 624; i++) {
+                    let t = 1812433253 * (MT[i - 1] ^ (MT[i - 1] >> 30)) + i;
+                    MT[i] = t & 0xffffffff;
+                }
+            }
+            function generate() {
+                for (let i = 0; i < 624; i++) {
+                    // 2^31 = 0x80000000
+                    // 2^31-1 = 0x7fffffff
+                    let y = (MT[i] & 0x80000000) + (MT[(i + 1) % 624] & 0x7fffffff);
+                    MT[i] = MT[(i + 397) % 624] ^ (y >> 1);
+                    if (y & 1) MT[i] ^= 2567483615;
+
+                }
+            }
+            function rand() {
+                if (!isInit) return null;
+
+                if (index == 0) generate();
+                let y = MT[index];
+                y = y ^ (y >> 11);
+                y = y ^ ((y << 7) & 2636928640);
+                y = y ^ ((y << 15) & 4022730752);
+                y = y ^ (y >> 18);
+                index = (index + 1) % 624;
+                return y;
+            }
+            return {
+                srand: srand,
+                rand: rand
+            };
+        })();
+
+
+        //setup audio context
+        window.AudioContext = window.AudioContext || window.webkitAudioContext;
+        var context = new window.AudioContext();
+
+        //create nodes
+        var osc; //create in event listener so we can press the button more than once
+        var masterGain = context.createGain();
+        var analyser = context.createAnalyser();
+
+        //routing
+        masterGain.connect(analyser);
+        analyser.connect(context.destination);
+
+        var isPlaying = false;
+
+        //draw function for canvas
+        function drawWave(analyser, ctx) {
+
+            var buffer = new Float32Array(1024),
+                w = ctx.canvas.width;
+
+            ctx.strokeStyle = "#777";
+            ctx.setTransform(1, 0, 0, -1, 0, 100.5); // flip y-axis and translate to center
+            ctx.lineWidth = 2;
+
+            (function loop() {
+                analyser.getFloatTimeDomainData(buffer);
+
+                ctx.clearRect(0, -100, w, ctx.canvas.height);
+
+                ctx.beginPath();
+                ctx.moveTo(0, buffer[0] * 90);
+                for (var x = 2; x < w; x += 2) ctx.lineTo(x, buffer[x] * 90);
+                ctx.stroke();
+
+                if (isPlaying) requestAnimationFrame(loop)
+            })();
+        }
+
+        //button trigger
+        $(function () {
+            var c = document.getElementById('scope'),
+                ctx = c.getContext("2d");
+
+            c.height = 200;
+            c.width = 600;
+
+            // make 0-line permanent as background
+            ctx.moveTo(0, 100.5);
+            ctx.lineTo(c.width, 100.5);
+            ctx.stroke();
+            c.style.backgroundImage = "url(" + c.toDataURL() + ")";
+
+            $('button').on('mousedown', function () {
+                osc = context.createOscillator();
+                //osc settings
+                osc.frequency.value = 10;
+                var imag = new Float32Array(200);   // sine
+                let Rnd = meisenRandom;
+                Rnd.srand(1);
+                for (let i = 0; i < 200; i++) imag[i] = (Rnd.rand() % 200-100);
+                // alert(imag);
+                var real = new Float32Array(imag.length);  // cos
+                var customWave = context.createPeriodicWave(real, imag);  // cos,sine
+                osc.setPeriodicWave(customWave);
+
+                osc.connect(masterGain);
+                osc.start();
+                isPlaying = true;
+
+                drawWave(analyser, ctx);
+            });
+
+            $('button').on('mouseup', function () {
+                isPlaying = false;
+                osc.stop();
+            });
+        });
     </script>
 </body>
+
+</html>

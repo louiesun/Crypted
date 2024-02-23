@@ -90,138 +90,201 @@ let meisenRandom = (function meisen() {
 		rand: rand
 	};
 })();
-let TempArray = Array(), Rnd = meisenRandom;
+// let TempArray = Array(), Rnd = meisenRandom;
 /** https://developer.mozilla.org/zh-CN/docs/Web/API/Canvas_API/Tutorial/Pixel_manipulation_with_canvas */
-function ImgProcess(w, h, swp, swh, svpc = 1)//swp: swp(a,b) rvs ath px & bth px 0~(w-1) 0~(h-1)
-{
-	let sz = w * h, tms = Math.trunc(sz * svpc);//
-	//关于性能平衡： 看了一下，一般图片至多10^6px，但是怎么说得1ms一张吧，这个是要给视频处理做铺垫得
+// function ImgProcess(w, h, swp, swh, svpc = 1)//swp: swp(a,b) rvs ath px & bth px 0~(w-1) 0~(h-1)
+// {
+// 	let sz = w * h, tms = Math.trunc(sz * svpc);//
+// 	//关于性能平衡： 看了一下，一般图片至多10^6px，但是怎么说得1ms一张吧，这个是要给视频处理做铺垫得
 
-	if (TempArray.length == 0) Rnd.srand(passnum);
-	while (TempArray.length < tms * 2) { TempArray.push(Rnd.rand()); TempArray.push(Rnd.rand()); }
-	//passnum 不变
+// 	if (TempArray.length == 0) Rnd.srand(passnum);
+// 	while (TempArray.length < tms * 2) { TempArray.push(Rnd.rand()); TempArray.push(Rnd.rand()); }
+// 	//passnum 不变
 
-	// console.log(TempArray);
+// 	// console.log(TempArray);
 
-	if (swh == 1) {
-		for (let i = 0; i < tms; i++) swp(TempArray[i * 2] % sz, TempArray[i * 2 + 1] % sz);
-		return swh;
-	}
-	else if (swh == -1) {
-		for (let i = tms - 1; i >= 0; i--) swp(TempArray[i * 2 + 1] % sz, TempArray[i * 2] % sz);
-		return swh;
-	}
-	else return null;
-}
+// 	if (swh == 1) {
+// 		for (let i = 0; i < tms; i++) swp(TempArray[i * 2] % sz, TempArray[i * 2 + 1] % sz);
+// 		return swh;
+// 	}
+// 	else if (swh == -1) {
+// 		for (let i = tms - 1; i >= 0; i--) swp(TempArray[i * 2 + 1] % sz, TempArray[i * 2] % sz);
+// 		return swh;
+// 	}
+// 	else return null;
+// }
+
+/** 0-255 Logistic  u between 3.5699456 and 4 x between 0 and 1 x[k+1]*u*x[k]*(1-x[k])*/
 
 function ChgPass(npass) {
 	passnum = npass;
-	TempArray = [];// if pass is changed, reflesh the exchange queue
 }
 
-/** wav wav 单声道单位时间振幅 t: number */
-function MusicProcess(t, swh) {
-	if (t > 5000 | t < -5000) return t;
-	else if (swh == 1) {
-		if (t + passnum > 5000) return t + passnum - 10000;
-		else return t + passnum;
-	}
-	else if (swh == -1) {
-		if (t - passnum < 5000) return t - passnum + 10000;
-		else return t - passnum;
-	}
-}
 function GetSelectionText()//selected so far
 {
-	if (document.Selection) return document.selection.createRange().text;     	 //ie
+	if (document.Selection) return document.selection.createRange().text;	 //ie
 	else return window.getSelection().toString();	 //chromium
 }
+
+
+
+/**
+	* 替换选择的文本，不支持textarea和input
+	* https://www.jianshu.com/p/991a1204660e
+	*/
+function SetSelectionText(text) {
+	if (document.selection) { // IE
+		let selecter = document.selection.createRange();
+		selecter.select();
+		let selectStr = selecter.text;
+		selecter.pasteHTML(text);
+	} else { // chromium id9+
+		let selecter;
+		if (window.getSelection()) {
+			selecter = window.getSelection();
+		} else {
+			selecter = document.getSelection();
+		}
+		selecter = document.getSelection();
+		let selectStr = selecter.toString();
+		if (selectStr.trim() != "") {
+			let rang = selecter.getRangeAt(0);
+			let temp = document.createElement('b');
+			rang.surroundContents(temp);
+			rang.deleteContents();
+			rang.insertNode(document.createTextNode(text));
+		}
+	}
+	return true;
+}
+
+/** 进来canvas ImageData，操作
+ * 不能由空元素，否则处理会乱
+ * 异或，用不上swh
+ * canvas.getContext("2d");*/
+function ProcessCanvas(cvs, swh) {
+	//RGBA
+	var ctx = cvs.getContext("2d");
+	let w = cvs.width, h = cvs.height, sz = w * h;
+	let imageData = ctx.getImageData(0, 0, w, h);
+
+	let tdata = imageData.data;
+
+	let Rnd = meisenRandom;
+	Rnd.srand(passnum);
+
+	for (let i = 0; i < 4 * w * h; i++) {
+		if (i % 4 != 3) {
+			tdata[i] = (tdata[i] ^ (Rnd.rand() % 256));
+		}
+	}
+
+
+	// alert(String(w)+" "+String(h)+" "+String(tdata.length));
+
+	// function swp(a, b) {
+	// 	// console.log(String(a)+" "+String(b));
+	// 	for (let i = 0; i < 4; i++) {
+	// 		if ((a + b) % 4 == i) continue;
+	// 		let t = tdata[b * 4 + i];
+	// 		// console.log(t);
+	// 		tdata[b * 4 + i] = tdata[a * 4 + i];
+	// 		tdata[a * 4 + i] = t;
+	// 	}
+	// }//废弃
+
+	// try {
+	// 	// ImgProcess(w, h, swp, swh);
+	// }
+	// catch
+	// {
+	// 	alert("ProcessFailed");
+	// }
+	// alert(String(w)+","+String(h));
+	ctx.putImageData(imageData, 0, 0);
+}
+
+/**
+ * atx: Audio Context
+ * reference: https://www.coder.work/article/940412
+ */
+
+let AudioProcess = (
+	/**
+	 * ctx: audio context
+	 */
+	function AudioProcess() {
+
+		var masterGain;
+		var osc;
+		var imag = new Float32Array(200); // sine
+		var real = new Float32Array(200); // cos
+		var customWave;
+
+		function init(ctx, swh) {
+			masterGain = ctx.createGain();
+			osc = ctx.createOscillator();
+			osc.frequency.value = 10;
+			let Rnd = meisenRandom;
+			Rnd.srand(passnum);
+			for (let i = 0; i < 200; i++) imag[i] = (Rnd.rand() % 100-50) * swh;
+
+			customWave = ctx.createPeriodicWave(real, imag); // cos,sine
+			osc.setPeriodicWave(customWave);
+			osc.connect(masterGain);
+			return osc;
+		}
+		function start() {
+			// alert(osc);
+			osc.start();
+		}
+		function end() {
+			osc.stop();
+		}
+		return {
+			StartProcess: start,
+			EndProcess: end,
+			InitProcess: init
+		}
+	}
+)();
+// todo: replace in the origin place: 非常奇怪，只对拖动选择的有效，跨行无效。
+
+navigator.mediaDevices.getUserMedia({ audio: true });
 
 (function () {
 	'use strict';
 
 
-	/**
-	* 替换选择的文本，不支持textarea和input
-	* https://www.jianshu.com/p/991a1204660e
-	*/
-	function SetSelectionText(text) {
-		if (document.selection) { // IE
-			let selecter = document.selection.createRange();
-			selecter.select();
-			let selectStr = selecter.text;
-			selecter.pasteHTML(text);
-		} else { // chromium id9+
-			let selecter;
-			if (window.getSelection()) {
-				selecter = window.getSelection();
-			} else {
-				selecter = document.getSelection();
-			}
-			selecter = document.getSelection();
-			let selectStr = selecter.toString();
-			if (selectStr.trim() != "") {
-				let rang = selecter.getRangeAt(0);
-				let temp = document.createElement('b');
-				rang.surroundContents(temp);
-				rang.deleteContents();
-				rang.insertNode(document.createTextNode(text));
-			}
-		}
-		return true;
-	}
 
-	/** 进来canvas ImageData，操作
-	 * 不能由空元素，否则处理会乱
-	 * canvas.getContext("2d");*/
-	function ProcessCanvas(cvs, swh) {
-		//RGBA
-		var ctx = cvs.getContext("2d");
-		let w = cvs.width, h = cvs.height, sz = w * h;
-		let imageData = ctx.getImageData(0, 0, w, h);
-
-		let tdata = imageData.data;
-
-		// alert(String(w)+" "+String(h)+" "+String(tdata.length));
-
-		function swp(a, b) {
-			// console.log(String(a)+" "+String(b));
-			for (let i = 0; i < 4; i++) {
-				if ((a + b) % 4 == i) continue;
-				let t = tdata[b * 4 + i];
-				// console.log(t);
-				tdata[b * 4 + i] = tdata[a * 4 + i];
-				tdata[a * 4 + i] = t;
-			}
-		}
-
-		try {
-			ImgProcess(w, h, swp, swh);
-		}
-		catch
-		{
-			alert("ProcessFailed");
-		}
-		// alert(String(w)+","+String(h));
-		ctx.putImageData(imageData, 0, 0);
-	}
-
-	// todo: replace in the origin place: 非常奇怪，只对拖动选择的有效，跨行无效。
 	let EndId = GM_registerMenuCommand("Encode", function () {
 		// try {
 		// 	let cvs = document.getElementById("canvas");
-		// 	// let start = new Date().getTime()
+		// 	let start = new Date().getTime()
 		// 	ProcessCanvas(cvs, 1);
-		// 	// let end = new Date().getTime()
-		// 	// alert(end - start);
+		// 	let end = new Date().getTime()
+		// 	alert(end - start);
 		// }
 		// catch
 		// {
 		// 	alert("ERR");
-		// }
+		// }//这一段是测试图片
+
+		try {
+			let Aps = AudioProcess;
+			window.AudioContext = window.AudioContext || window.webkitAudioContext;
+			var ctx = new window.AudioContext();
+			Aps.InitProcess(ctx, 1);
+			Aps.StartProcess();
+		}
+		catch {
+			alert("ERR");
+		}//这一段是测试音频 需要用户操作才能开始（隐私政策？）
+
+
 
 		let Text = GetSelectionText();
-		
+
 		Text = StrProcess(Text, 1);
 
 		try {
@@ -233,6 +296,8 @@ function GetSelectionText()//selected so far
 		}
 	}, "e");
 	let DcdId = GM_registerMenuCommand("Decode", function () {
+
+
 
 		let Text = GetSelectionText();
 		Text = StrProcess(Text, -1);
