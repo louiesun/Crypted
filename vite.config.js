@@ -15,7 +15,7 @@ export default defineConfig({
                 name: 'Cryption Aganst Censorship',
                 short_name: "Crypted",
                 theme_color: "#39c5bb",
-                start_url: "/",
+                start_url: "./",
                 display: "standalone",
                 background_color: "#39c5bb",
                 icons: [
