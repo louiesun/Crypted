@@ -130,7 +130,10 @@
 
 			for (let i = 0; i < 4 * w * h; i++) {
 				if (i % 4 != 3) {
-					tdata[i] = (tdata[i] ^ (Rnd.rand() % 256));
+					if(swh==1)
+						tdata[i] = (tdata[i] + Rnd.rand())% 256;
+					else	
+						tdata[i] = ((tdata[i] - Rnd.rand())%256+256)% 256;
 				}
 			}
 
