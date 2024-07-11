@@ -1,1 +1,0 @@
-if('serviceWorker' in navigator) navigator.serviceWorker.register('/Crypted/dev-sw.js?dev-sw', { scope: '/Crypted/', type: 'classic' })
